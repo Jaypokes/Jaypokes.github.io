@@ -51,23 +51,137 @@
         }
 
         var engine = null;
+        var photos = ["https://i.imgur.com/0akFeLP.jpeg","https://i.imgur.com/0akFeLP.jpeg","https://i.imgur.com/GTmWDGJ.jpg"];
         var scene = null;
         var sceneToRender = null;
         var createDefaultEngine = function() { return new BABYLON.Engine(canvas, true, { preserveDrawingBuffer: true, stencil: true,  disableWebGL2Support: false}); };
-        const createScene = function () {
-    
-    const scene = new BABYLON.Scene(engine);
+        var url = "https://code.jquery.com/pep/0.4.3/pep.js";
+        var s = document.createElement("script");
+        s.src = url;
+        document.head.appendChild(s);
 
-    const camera = new BABYLON.ArcRotateCamera("camera", -Math.PI / 2, Math.PI / 2.5, 15, new BABYLON.Vector3(0, 0, 0));
-    camera.attachControl(canvas, true);
-    const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0));
+        var createScene = async function() {
+            var scene = new BABYLON.Scene(engine);
+            
+            var camera = new BABYLON.ArcRotateCamera("Camera", -Math.PI / 2, Math.PI / 2, 10, BABYLON.Vector3.Zero(), scene);
+            camera.attachControl(canvas, true);
+        
+            camera.inputs.attached.mousewheel.detachControl(canvas);
+            //To prevent zoom out to a sphere in mobile
+            camera.upperRadiusLimit = camera.radius;
+            camera.lowerRadiusLimit = camera.radius;
+        
+            //Create PhotoDome
+            var dome = new BABYLON.PhotoDome(
+                "testdome",
+                "https://i.imgur.com/0akFeLP.jpeg",
+                {
+                    resolution: 32,
+                    size: 1000,
+                    useDirectMapping: false
+                },
+                scene
+            );
+            dome.imageMode = BABYLON.PhotoDome.MODE_MONOSCOPIC;
+            dome.fovMultiplier = 2.0;
+            dome.isPickable = false;
+        
+        function createOrb(length,index,url){
 
-    // BABYLON.SceneLoader.ImportMeshAsync("semi_house", "https://assets.babylonjs.com/meshes/", "both_houses_scene.babylon");
-    //("","./models/","Test_Room2.glb",this.scene);
+            // Create sphere shaped holders
+            var _sphereDiameter = 2.0;
+            var _sphereDiameterX = 2.0;
+            
+            sphere = BABYLON.MeshBuilder.CreateSphere("imgSphere"+index, { diameter: _sphereDiameter, diameterX: _sphereDiameterX }, scene);;
+            sphere.position.y = 0;
+            if(length%2==0)
+                sphere.position.x = -((((length/2)-index)*3)-1.5);
+            else
+                sphere.position.x = -(((length/2)-.5)-index)*3;
+            sphere.position.z = 0.5;
+        
+            var _material = new BABYLON.StandardMaterial("sphere material", scene);
+            var _texture = new BABYLON.Texture(url, scene);
+            _texture.vScale = -1;
+            _material.ambientTexture = _texture;
+            _material.emissiveColor = new BABYLON.Color3(1, 1, 1);
+        
+            sphere.material = _material;
+            sphere.isPickable = true;
+            return sphere;
+        
+        }
+        const spheres = new Array();
+        const urls = ["https://i.imgur.com/GTmWDGJ.jpg","https://playground.babylonjs.com/textures/360photo.jpg","https://playground.babylonjs.com/textures/360photo.jpg","https://playground.babylonjs.com/textures/360photo.jpg","https://i.imgur.com/0akFeLP.jpeg"]
+        for(let i = 0;i<=urls.length;i++){
+            spheres.push(createOrb(urls.length,i,urls[i]));
+        }
 
-    BABYLON.SceneLoader.ImportMeshAsync("semi_house","./models/","Test_Room2.glb",scene);
-    return scene;
-};
+        // sphere1 = createOrb(5,0,"https://playground.babylonjs.com/textures/360photo.jpg");
+        // sphere2 = createOrb(5,1,"https://i.imgur.com/GTmWDGJ.jpg");
+        // createOrb(5,2,"https://i.imgur.com/0akFeLP.jpeg");
+        // createOrb(5,3,"https://i.imgur.com/0akFeLP.jpeg");
+        // createOrb(5,4,"https://i.imgur.com/0akFeLP.jpeg");
+        
+          
+        
+            //Initialize WebXR
+            var xrHelper;
+            try {
+                xrHelper = await scene.createDefaultXRExperienceAsync();
+            } catch(ex){
+                alert("WebXR not supported");
+            }
+            
+            scene.activeCamera.setTarget(new BABYLON.Vector3(0, 0, 0));
+            // Runs every frame to rotate the sphere
+            scene.onBeforeRenderObservable.add(() => {
+                // for(let i = 0;i<=spheres.length;i++){
+                //     console.log(spheres.length);
+                //     spheres[i].rotation.y += 0.0002 * scene.getEngine().getDeltaTime();
+                // }
+                // sphere2.rotation.y += 0.0002 * scene.getEngine().getDeltaTime();
+            });
+        
+            //sphere.actionManager = new BABYLON.ActionManager(scene);
+        
+            //sphere.actionManager.registerAction(
+            //    new BABYLON.ExecuteCodeAction(BABYLON.ActionManager.OnPickTrigger, 
+            //    function(event){
+            //        var pickedMesh = event.meshUnderPointer; 
+            //  dome.photoTexture = new BABYLON.Texture("img2.jpg", scene, false ,false);            
+            //    })
+            //);
+        
+            var _prevPickedMesh = "";
+            scene.onPointerObservable.add((pointerInfo) => {
+                console.log(_prevPickedMesh);
+                switch (pointerInfo.type) {
+                    case BABYLON.PointerEventTypes.POINTERDOWN:
+                        var pickResult = pointerInfo.pickInfo;
+                        if (pickResult.hit) {
+                            var pickedMesh = pickResult.pickedMesh;
+                            
+                            if (pickedMesh.name == "testdome_mesh") return;
+                            if (_prevPickedMesh == pickedMesh.name) return;
+                            _prevPickedMesh = pickedMesh.name;
+        
+                            if (pickedMesh) {
+                                if (typeof pickedMesh.material.ambientTexture !== 'undefined') {
+                                    dome.photoTexture = new BABYLON.Texture(pickedMesh.material.ambientTexture.name, scene, false, true);
+                                }
+        
+                            }
+                        }
+                        break;
+                    case BABYLON.PointerEventTypes.POINTERPICK:
+                        break;
+                }
+                
+            });
+        
+            return scene;
+        };
                 window.initFunction = async function() {
                     
                     
@@ -84,7 +198,8 @@
         if (!engine) throw 'engine should not be null.';
         startRenderLoop(engine, canvas);
         window.scene = createScene();};
-        initFunction().then(() => {sceneToRender = scene                    
+        initFunction().then(() => {scene.then(returnedScene => { sceneToRender = returnedScene; });
+                            
         });
 
         // Resize
