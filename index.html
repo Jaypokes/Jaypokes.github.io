@@ -77,6 +77,8 @@
             // Our built-in 'sphere' shape.
             var sphere = BABYLON.MeshBuilder.CreateSphere("sphere", {diameter: 2, segments: 32}, scene);
         
+            BABYLON.SceneLoader.ImportMeshAsync("semi_house","/models/","Test_Room2.glb",scene);
+
             // Move the sphere upward 1/2 its height
             sphere.position.y = 1;
         
