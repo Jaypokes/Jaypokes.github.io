@@ -95,6 +95,12 @@ var createScene = async function () {
     box.material.diffuseTexture.hasAlpha = true;
     box.position = new BABYLON.Vector3(5, 1, 5);
     box.checkCollisions = true;
+    
+    // Load the sound and play it automatically once ready
+var music = new BABYLON.Sound("Music", "music/cottaging.wav", scene, null, {
+  loop: true,
+  autoplay: true
+});
 
     const xr = await scene.createDefaultXRExperienceAsync({
         floorMeshes: [ground1],
